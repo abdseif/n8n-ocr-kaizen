@@ -1,32 +1,40 @@
 from flask import Flask, request, jsonify
-import pytesseract
 from pdf2image import convert_from_path
-from werkzeug.utils import secure_filename
-import os
+from PIL import Image
+import pytesseract
 import tempfile
+import os
 
 app = Flask(__name__)
 
-@app.route("/ocr", methods=["POST"])
+def convert_pdf_to_images(pdf_path):
+    # Generator that yields one image per page (JPEG to reduce memory)
+    for page in convert_from_path(pdf_path, fmt='jpeg'):
+        yield page
+
+@app.route('/ocr', methods=['POST'])
 def ocr():
     if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return jsonify({'error': 'No file provided'}), 400
 
     file = request.files['file']
-    filename = secure_filename(file.filename)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        pdf_path = os.path.join(temp_dir, filename)
-        file.save(pdf_path)
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        file.save(tmp.name)
 
-        # Store all extracted text
-        full_text = []
+    text_result = []
 
-        # Convert PDF one page at a time
-        for i, image in enumerate(convert_from_path(pdf_path)):
-            text = pytesseract.image_to_string(image)
-            full_text.append(f"--- Page {i+1} ---\n{text.strip()}")
+    try:
+        if file.filename.endswith('.pdf'):
+            for image in convert_pdf_to_images(tmp.name):
+                text_result.append(pytesseract.image_to_string(image))
+        else:
+            image = Image.open(tmp.name)
+            text_result.append(pytesseract.image_to_string(image))
 
-        result = "\n\n".join(full_text)
+        return jsonify({'text': '\n'.join(text_result)})
 
-    return jsonify({"text": result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        os.remove(tmp.name)
