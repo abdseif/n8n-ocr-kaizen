@@ -4,6 +4,19 @@ services:
     env: docker
     plan: free
     autoDeploy: true
+
+    # Increase request timeout to allow long OCR tasks
+    timeout: 900
+
+    # Run a single worker to limit memory usage spikes
+    numInstances: 1
+
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: WORKERS
+        value: "1"  # Prevents Render's default of 4 workers (which can OOM crash small instances)
+
+    buildCommand: pip install -r requirements.txt
+
+    startCommand: gunicorn --workers=1 --timeout=900 --bind 0.0.0.0:10000 app:app
