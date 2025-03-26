@@ -2,6 +2,7 @@ from PIL import Image, ImageEnhance, ImageOps
 import pytesseract
 import cv2
 import numpy as np
+from PIL import Image, ImageEnhance
 
 def preprocess_image(image):
     # Convert to grayscale
@@ -11,15 +12,19 @@ def preprocess_image(image):
     enhancer = ImageEnhance.Contrast(image)
     image = enhancer.enhance(2.0)
 
-    # Binarize (thresholding)
-    image = ImageOps.invert(image)
-    threshold = 150
-    image = image.point(lambda x: 0 if x < threshold else 255, '1')
-    image = ImageOps.invert(image)
-
-    # Convert to NumPy and denoise using OpenCV
+    # Convert to NumPy array
     image_np = np.array(image)
-    denoised = cv2.fastNlMeansDenoising(image_np, None, 30, 7, 21)
+
+    # Optional: Binarize (thresholding)
+    _, binary = cv2.threshold(image_np, 127, 255, cv2.THRESH_BINARY)
+
+    # ✅ Ensure proper dtype
+    binary = binary.astype(np.uint8)
+
+    # Denoise the image
+    denoised = cv2.fastNlMeansDenoising(binary, None, 30, 7, 21)
+
+    # Convert back to PIL image
     return Image.fromarray(denoised)
 
 def extract_text_from_image(image):
