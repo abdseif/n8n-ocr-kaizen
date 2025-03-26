@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: tesseract-ocr-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn api:app
+    plan: free
