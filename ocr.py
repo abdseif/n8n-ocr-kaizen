@@ -1,20 +1,28 @@
-import pytesseract
 from PIL import Image, ImageEnhance, ImageOps
+import pytesseract
+import cv2
+import numpy as np
 
-def perform_ocr_on_images(images):
-    text = ''
-    for image in images:
-        # Convert to grayscale
-        image = image.convert('L')
+def preprocess_image(image):
+    # Convert to grayscale
+    image = image.convert('L')
 
-        # Optional: Increase contrast
-        enhancer = ImageEnhance.Contrast(image)
-        image = enhancer.enhance(2.0)  # 2.0 = double contrast
+    # Increase contrast
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(2.0)
 
-        # Optional: Binarize image (convert to black and white)
-        image = image.point(lambda x: 0 if x < 180 else 255, '1')
+    # Binarize (thresholding)
+    image = ImageOps.invert(image)
+    threshold = 150
+    image = image.point(lambda x: 0 if x < threshold else 255, '1')
+    image = ImageOps.invert(image)
 
-        # Apply OCR with custom config
-        custom_config = r'--oem 1 --psm 6'
-        text += pytesseract.image_to_string(image, config=custom_config)
-    return text
+    # Convert to NumPy and denoise using OpenCV
+    image_np = np.array(image)
+    denoised = cv2.fastNlMeansDenoising(image_np, None, 30, 7, 21)
+    return Image.fromarray(denoised)
+
+def extract_text_from_image(image):
+    processed_image = preprocess_image(image)
+    custom_config = r'--oem 1 --psm 11'
+    return pytesseract.image_to_string(processed_image, config=custom_config)
