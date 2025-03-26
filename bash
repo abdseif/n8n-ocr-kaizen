@@ -1,5 +1,2 @@
-git init
-git remote add origin https://github.com/YOUR_USERNAME/tesseract-api.git
-git add .
-git commit -m "Initial commit"
-git push origin master
+docker build -t n8n-ocr-kaizen .
+docker run -p 5000:5000 n8n-ocr-kaizen
