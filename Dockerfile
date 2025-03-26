@@ -22,4 +22,4 @@ COPY . /app
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Run the app
-CMD ["gunicorn", "--workers=1", "--timeout=0", "--bind=0.0.0.0:10000", "api:app"]
+CMD ["gunicorn", "--bind=0.0.0.0:10000", "api:app"]
