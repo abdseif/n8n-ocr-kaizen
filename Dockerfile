@@ -1,8 +1,12 @@
 FROM python:3.11-slim
 
-# Install required system packages
+# Prevent Python from writing .pyc files and using stdout buffering
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
     tesseract-ocr \
     poppler-utils \
     libglib2.0-0 \
@@ -15,11 +19,15 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY . /app
+# Copy app files
+COPY . .
 
-# Install Python dependencies
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Upgrade pip and install dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Run the app
+# Expose the port (match Render config)
+EXPOSE 10000
+
+# Start the server using gunicorn
 CMD ["gunicorn", "--bind=0.0.0.0:10000", "api:app"]
