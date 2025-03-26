@@ -1,36 +1,43 @@
 from flask import Flask, request, jsonify
-from ocr import perform_ocr  # assuming ocr.py has a function named perform_ocr
-from pdf_to_images import convert_pdf_to_images  # if you support PDFs
-import os
+from pdf2image import convert_from_path
+from PIL import Image
+import pytesseract
 import tempfile
+import os
 
 app = Flask(__name__)
+
+def convert_pdf_to_images(pdf_path, output_folder):
+    return convert_from_path(pdf_path, output_folder=output_folder)
+
+def perform_ocr(image):
+    return pytesseract.image_to_string(image)
 
 @app.route('/ocr', methods=['POST'])
 def ocr():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part in request'}), 400
+        return jsonify({'error': 'No file part in the request'}), 400
 
     file = request.files['file']
+
     if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+        return jsonify({'error': 'No file selected'}), 400
 
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        file.save(tmp.name)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.NamedTemporaryFile(delete=False, dir=temp_dir) as tmp:
+            file.save(tmp.name)
 
-        if file.filename.endswith('.pdf'):
-            images = convert_pdf_to_images(tmp.name)
-            text = ''
-            for img in images:
-                text += perform_ocr(img) + '\n'
-        else:
-            text = perform_ocr(tmp.name)
+            try:
+                if file.filename.lower().endswith('.pdf'):
+                    images = convert_pdf_to_images(tmp.name, temp_dir)
+                else:
+                    images = [Image.open(tmp.name)]
 
-        os.unlink(tmp.name)  # clean up
+                text = ''
+                for image in images:
+                    text += perform_ocr(image) + '\n'
 
-    return jsonify({'text': text})
+                return jsonify({'text': text.strip()})
 
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
