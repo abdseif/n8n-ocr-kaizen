@@ -1,7 +1,10 @@
 services:
   - type: web
-    name: tesseract-ocr-api
+    name: n8n-ocr-kaizen
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      apt-get update && \
+      apt-get install -y tesseract-ocr poppler-utils && \
+      pip install -r requirements.txt
     startCommand: gunicorn api:app
     plan: free
